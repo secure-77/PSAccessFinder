@@ -1,5 +1,5 @@
 # inputs
-$startfolder = "C:\Program Files (x86)"
+$startfolder = "C:\Users"
 $language = GET-WinSystemLocale | Select-Object Name
 
 $global:username = $env:computername + "\\" + $env:UserName
@@ -17,7 +17,7 @@ if ($language -match "de-DE") {
 }
 
 
-function GetSub-Folders {
+function Get-SubFolders {
     param (
         $startfolder
     )
@@ -26,7 +26,7 @@ function GetSub-Folders {
 }
 
 
-function Check-ACLs {
+function Invoke-CheckACLs {
     param (
         $targetfolder
     )
@@ -70,17 +70,17 @@ function Check-ACLs {
                 Write-Output "no permission, checking subfolder of $folder"
             }
 
-            $subfolders = GetSub-Folders -startfolder $folder
-            Check-ACLs -targetfolder $subfolders
+            $subfolders = Get-SubFolders -startfolder $folder
+            Invoke-CheckACLs -targetfolder $subfolders
         }
     }  
 }
 
 
-$folders = GetSub-Folders -startfolder $startfolder
+$folders = Get-SubFolders -startfolder $startfolder
 Write-Output "`n"
 Write-Output "starting search for write access in subfolders of $startfolder`n"
-Check-ACLs -targetfolder $folders -verboseLevel $verboseLevel
+Invoke-CheckACLs -targetfolder $folders -verboseLevel $verboseLevel
 
 Write-Output $Output | Format-Table -AutoSize 
 
