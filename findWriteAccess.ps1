@@ -1,63 +1,91 @@
 # inputs
-$username = $env:computername + "\\" + $env:UserName
-$startfolder = "C:\Program Files"
+$startfolder = "C:\Program Files (x86)"
 $language = GET-WinSystemLocale | Select-Object Name
-$userShema = "BUILTIN\\Users"
-$authShema = "NT AUTHORITY\\authenticated users"
 
+$global:username = $env:computername + "\\" + $env:UserName
+$global:userShema = "BUILTIN\\Users"
+$global:authShema = "NT AUTHORITY\\authenticated users"
+$global:verboseLevel = 1
+$folders = @()
+$global:Output = @() 
+
+
+# Language
 if ($language -match "de-DE") {
-    $userShema = "VORDEFINIERT\\Benutzer"
-    $authShema = "NT-AUTORITÄT\\Authentifizierte Benutzer"
+    $global:userShema = "VORDEFINIERT\\Benutzer"
+    $global:authShema = "NT-AUTORITÄT\\Authentifizierte Benutzer"
 }
 
 
-# step 1) get folder permissions
-#$acl = get-acl $folder
-#$acl =  Get-ChildItem $folder -Recurse -ErrorAction SilentlyContinue | where { $_.PSIsContainer -eq "TRUE"} | %{get-acl $_.FullName -ErrorAction SilentlyContinue} 
-
-$folders = Get-ChildItem $startfolder -Recurse -ErrorAction SilentlyContinue | where { $_.PSIsContainer -eq "TRUE" } 
-
-# foreach ($folder in $acl){
-
-    
-#     $perms = get-acl $folder -ErrorAction SilentlyContinue #| Where-Object {$_.Access -contains "Allow"} | Format-Table
-#     $perms.access.where({($_.filesystemrights -match "FullControl" -OR $_.filesystemrights -match "Write") -AND ($_.AccessControlType -match "Allow") -AND ($_.IdentityReference -match "VORDEFINIERT\\Benutzer" -OR $_.IdentityReference -match $username) }) 
-#     Write-Output $perms | Format-List -Property Path,Owner,Group,AccessToString
-# }
+function GetSub-Folders {
+    param (
+        $startfolder
+    )
+    Return Get-ChildItem $startfolder -ErrorAction SilentlyContinue | where-object { $_.PSIsContainer -eq "TRUE" } 
+   
+}
 
 
-$Output = @() 
-foreach ($folder in $folders) {
+function Check-ACLs {
+    param (
+        $targetfolder
+    )
 
-    $FullPath = $folder.FullName
-    try {
-        $acl = get-acl $FullPath -ErrorAction SilentlyContinue
-    }
-    Catch {
-        continue;
-    }
-    $Access = $acl.Access
+    foreach ($folder in $targetfolder) {
 
-    foreach ($AccessObject in $Access) {
-        $User = $AccessObject.IdentityReference.value
-        $Rights = $AccessObject.FileSystemRights
-        $Control = $AccessObject.AccessControlType
-
-        if ($Control -match "Allow") { 
-            if ($User -match $userShema -or $User -match $username -or $User -match $authShema) {
-                if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify") {
-                    Write-Output "Path found: $FullPath"           
-                    $Line = New-Object PSObject
-                    $Line | Add-Member -membertype NoteProperty -name "Path" -Value $FullPath
-                    $Line | Add-Member -membertype NoteProperty -name "Group" -Value $User
-                    $Line | Add-Member -membertype NoteProperty -name "Rights" -Value $Rights
-                    $Output += $Line
-                }
-            }
+        $FullPath = $folder.FullName
+        try {
+            $acl = get-acl $FullPath -ErrorAction SilentlyContinue
         }
-    }
+        Catch {
+            continue;
+        }
+        $Access = $acl.Access
+
+        $check = $false
+        foreach ($AccessObject in $Access) {
+            $User = $AccessObject.IdentityReference.value
+            $Rights = $AccessObject.FileSystemRights
+            $Control = $AccessObject.AccessControlType
+           
+            if ($Control -match "Allow") { 
+                if ($User -match $global:userShema -or $User -match $global:username -or $User -match $global:authShema) {
+                    if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify") {
+                        
+                        if ($verboseLevel -gt 0) {
+                            Write-Output "Path found: $FullPath"           
+                        }
+                        $check = $true
+                        $Line = New-Object PSObject
+                        $Line | Add-Member -membertype NoteProperty -name "Path" -Value $FullPath
+                        $Line | Add-Member -membertype NoteProperty -name "Group" -Value $User
+                        $Line | Add-Member -membertype NoteProperty -name "Rights" -Value $Rights
+                        $global:Output += $Line
+                    }
+                }
+            }         
+        }
+        if ($check -eq $false) {
+            if ($verboseLevel -gt 1) {
+                Write-Output "no permission, checking subfolder of $folder"
+            }
+
+            $subfolders = GetSub-Folders -startfolder $folder
+            Check-ACLs -targetfolder $subfolders
+        }
+    }  
 }
+
+
+$folders = GetSub-Folders -startfolder $startfolder
+Write-Output "`n"
+Write-Output "starting search for write access in subfolders of $startfolder`n"
+Check-ACLs -targetfolder $folders -verboseLevel $verboseLevel
+
 Write-Output $Output | Format-Table -AutoSize 
+
+
+
 
 
 
