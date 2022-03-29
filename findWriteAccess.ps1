@@ -16,16 +16,16 @@ if ($language -match "de-DE") {
     $global:authShema = "NT-AUTORITÄT\\Authentifizierte Benutzer"
 }
 
-
+# Get subfolders of directory
 function Get-SubFolders {
     param (
         $startfolder
     )
     Return Get-ChildItem $startfolder -ErrorAction SilentlyContinue | where-object { $_.PSIsContainer -eq "TRUE" } 
-   
 }
 
 
+# Check the ACLs for all subfolders
 function Invoke-CheckACLs {
     param (
         $targetfolder
@@ -52,6 +52,7 @@ function Invoke-CheckACLs {
                 if ($User -match $global:userShema -or $User -match $global:username -or $User -match $global:authShema) {
                     if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify") {
                         
+                        # Found access
                         if ($verboseLevel -gt 0) {
                             Write-Output "Path found: $FullPath"           
                         }
@@ -65,6 +66,7 @@ function Invoke-CheckACLs {
                 }
             }         
         }
+        # no access, check subfolders
         if ($check -eq $false) {
             if ($verboseLevel -gt 1) {
                 Write-Output "no permission, checking subfolder of $folder"
@@ -83,10 +85,3 @@ Write-Output "starting search for write access in subfolders of $startfolder`n"
 Invoke-CheckACLs -targetfolder $folders -verboseLevel $verboseLevel
 
 Write-Output $Output | Format-Table -AutoSize 
-
-
-
-
-
-
-
