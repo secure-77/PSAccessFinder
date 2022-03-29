@@ -1,4 +1,4 @@
-# PSAcessFinder
+# PSAccessFinder
  
 This Powershell script searches recursive for folders where the current user has Write, Modify or FullControl permissions. Its meant to find insufficient permissions that you can use for DLL Hijacking
 
