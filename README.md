@@ -7,8 +7,7 @@ If it found a folder with permissions, it skipps the subfolders of them.
 
 # SYNTAX
 ```powershell
-Z:\OneDrive\Coding\powershell\PSAccessFinder\findWriteAccess.ps1 [[-verbose] <Int32>] [[-startfolder] <String>]
-[[-procInput] <String>]
+C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-verbose] <Int32>] [[-startfolder] <String>] [[-inputCSV] <String>] [-formatList]
 ```
 
 
@@ -34,7 +33,3 @@ C:\PS>.\findWriteAccess.ps1 -procInput .\Logfile.CSV -verbose 2
 ```
 
 
-
-# ToDo
-- check also for file owner permissions
-- check parent folder(s) if the target one does not exist
