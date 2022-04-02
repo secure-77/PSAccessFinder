@@ -13,6 +13,8 @@
     2 = print found folders and folders wihtout permissions at the moment of check
 .PARAMETER formatList
     If set, the output will be printed as list instead of a table
+.PARAMETER noRecurse
+    Only relevant for searches from current or start folder, if set, searching in subfolders will be skipped
 .EXAMPLE
     C:\PS>.\findWriteAccess.ps1
     
@@ -48,13 +50,13 @@ if ($startfolder -eq "" -AND $inputCSV -eq "") {
     $startfolder = Get-Location
 }
 
-$language = GET-WinSystemLocale | Select-Object Name
+$global:skippFolders = @("C:\Windows\servicing\LCU", "C:\Windows\WinSxS")
 
+$language = GET-WinSystemLocale | Select-Object Name
 $global:username = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
 $global:userShema = "BUILTIN\Users"
 $global:domainUserShema = $env:USERDomain + "\Domain Users"
 $global:authShema = "NT AUTHORITY\authenticated users"
-# ToDo Add Domain Users: example HOLOLIVE\Domain Users
 $global:verboseLevel = $verbose
 $global:noRecurseOn = $noRecurse
 $folders = @()
@@ -66,9 +68,8 @@ $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 if ($language -match "de-DE") {
     $global:userShema = "VORDEFINIERT\Benutzer"
     $global:authShema = "NT-AUTORITÄT\Authentifizierte Benutzer"
-   
-    }
-
+    $global:domainUserShema = $env:USERDomain + "\Domänen-Benutzer"
+}
 
 
 
@@ -98,29 +99,18 @@ function Invoke-CheckACLs {
             continue;
         }
         $Access = $acl.Access
-       # $Owner = $acl.Owner
-       # Write-Output "owner $Owner"
-       #Write-Output "path $Owner"
-        
-
+      
         $check = $false
         foreach ($AccessObject in $Access) {
             $User = $AccessObject.IdentityReference.value
             $Rights = $AccessObject.FileSystemRights
             $Control = $AccessObject.AccessControlType
-
-            #Write-Output "User: $User"
-            #Write-Output "Username var: $global:username"
-       
+     
             if ($Control -eq "Allow") { 
                 if ($User -eq $global:userShema -or $User -eq $global:username -or $User -eq $global:authShema -or $User -eq $global:domainUserShema) {
-                    #Write-Output "YESSSS"
-                    #Write-Output "Rechte $Rights"
 
-                    if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify" -or $Rights -match "CreateFiles") {
-                        
-                        #Write-Output "Rechte $Rights"
-                        #Write-Output "YESSSS 222222222222222222"
+                    if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify" -or $Rights -match "CreateFiles") {                    
+
                         # Found access
                         if ($verboseLevel -gt 0) {
                             Write-Output "Path found: $FullPath"                            
@@ -145,17 +135,13 @@ function Invoke-CheckACLs {
                             else {
                                 $Line | Add-Member -membertype NoteProperty -name "AcessTo" -Value "FullPath"
                             }
-                        } else {
+                        }
+                        else {
                             
                             $dllFullPath = $FullPath + "\" + $folder.dllName
                         }
                         
                         $Line | Add-Member -membertype NoteProperty -name "FullPath" -Value $dllFullPath
-                                                                
-                        # if (!$folder.dllName -eq "") {
-                        #     $Line | Add-Member -membertype NoteProperty -name "File" -Value $folder.dllName
-                        # }
-
                         $Line | Add-Member -membertype NoteProperty -name "Acess" -Value $User
                         $Line | Add-Member -membertype NoteProperty -name "Rights" -Value $Rights
                         $global:Output += $Line
@@ -168,22 +154,26 @@ function Invoke-CheckACLs {
             if ($verboseLevel -gt 1) {
                 Write-Output "no permissions in $FullPath"
             }
-             # no access, check subfolders
+            # no access, check subfolders
             if ( $recursive -eq $true) {
-                
-                if ($verboseLevel -gt 1) {
-                    Write-Output "recursive on, checking subfolder of $FullPath"
-                }
+                       
+                if (!$global:skippFolders.contains($FullPath)) {
 
-                # skipping some time consuming folders
-                if ($FullPath -ne "C:\Windows\servicing\LCU" -AND $FullPath -ne "C:\Windows\WinSxS") {
+                    if ($verboseLevel -gt 1) {
+                        Write-Output "recursive on, checking subfolders"
+                    }
 
                     $subfolders = Get-SubFolders -startfolder $FullPath
                     Invoke-CheckACLs -targetfolder $subfolders
 
+                    # skipping some time consuming folders
+                }
+                else {
+                    if ($verboseLevel -gt 0) {
+                        Write-Output "skipping subfolders check for $FullPath"
+                    }
                 }
     
-
             }
 
         }
@@ -247,17 +237,17 @@ else {
     $folders = Get-SubFolders -startfolder $startfolder
 
     if ($noRecurseOn) {
-        Invoke-CheckACLs -targetfolder $folders -recursive $false
-        if ($verboseLevel -gt 1) {
+        
+        if ($verboseLevel -gt 0) {
             
-            Write-Output "recursive search is off"
+            Write-Output "recursive search is off`n"
         }
 
-    } else {
+        Invoke-CheckACLs -targetfolder $folders -recursive $false
+    }
+    else {
         Invoke-CheckACLs -targetfolder $folders
     }
-
-    
 }
 
 
@@ -265,7 +255,8 @@ if ($Output.Count -gt 0) {
     Write-Output "`nfound some folders, happy hunting :)"
     if ($formatList) {
         Write-Output $Output | Format-List
-    } else {
+    }
+    else {
         Write-Output $Output | Format-Table -AutoSize 
     }
 }
@@ -273,8 +264,9 @@ else {
     Write-Output "`nfound no folders with permissions :("
 }
 
-$stopwatch.Stop()
+
 [int]$elapsedSecods = $stopwatch.Elapsed.Seconds
+[int]$elapsedMinutes = $stopwatch.Elapsed.Minutes
 
-Write-Output "Search took $elapsedSecods seconds"
-
+Write-Output "Search took $elapsedMinutes minutes and $elapsedSecods seconds"
+$stopwatch.Stop()
