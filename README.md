@@ -52,9 +52,7 @@ For technical information, type: "Get-Help Z:\OneDrive\Coding\powershell\PSAcces
 For online help, type: "Get-Help Z:\OneDrive\Coding\powershell\PSAccessFinder\findWriteAccess.ps1 -Online"
 ```
 
-# Demo
+# Preview
 
-
-
-[Demo 1](https://github.com/secure-77/PSAccessFinder/blob/main/WindowsClient.png)
-[Demo 2](https://github.com/secure-77/PSAccessFinder/blob/main/WindowsServer.png)
+![Demo 1](https://github.com/secure-77/PSAccessFinder/blob/main/WindowsClient.png "Demo 1")
+![Demo 2](https://github.com/secure-77/PSAccessFinder/blob/main/WindowsServer.png "Demo 2")
