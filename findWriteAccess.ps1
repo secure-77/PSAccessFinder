@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     PSAccessFinder - find folders where you can write into
 .DESCRIPTION
@@ -38,7 +38,8 @@ param (
     [int]$verbose = 0,
     [String]$startfolder = "",   
     [String]$inputCSV,
-    [switch]$formatList
+    [switch]$formatList,
+    [switch]$noRecurse
 )
 
 
@@ -49,18 +50,24 @@ if ($startfolder -eq "" -AND $inputCSV -eq "") {
 
 $language = GET-WinSystemLocale | Select-Object Name
 
-$global:username = $env:computername + "\\" + $env:UserName
-$global:userShema = "BUILTIN\\Users"
-$global:authShema = "NT AUTHORITY\\authenticated users"
+$global:username = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+$global:userShema = "BUILTIN\Users"
+$global:domainUserShema = $env:USERDomain + "\Domain Users"
+$global:authShema = "NT AUTHORITY\authenticated users"
+# ToDo Add Domain Users: example HOLOLIVE\Domain Users
 $global:verboseLevel = $verbose
+$global:noRecurseOn = $noRecurse
 $folders = @()
 $global:Output = @() 
 
+$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
+
 # Language
 if ($language -match "de-DE") {
-    $global:userShema = "VORDEFINIERT\\Benutzer"
-    $global:authShema = "NT-AUTORITÄT\\Authentifizierte Benutzer"
-}
+    $global:userShema = "VORDEFINIERT\Benutzer"
+    $global:authShema = "NT-AUTORITÄT\Authentifizierte Benutzer"
+   
+    }
 
 
 
@@ -70,6 +77,7 @@ function Get-SubFolders {
     param (
         $startfolder
     )
+    Write-Output "check folder: $startfolder"
     Return Get-ChildItem $startfolder -ErrorAction SilentlyContinue | where-object { $_.PSIsContainer -eq "TRUE" } 
 }
 
@@ -80,7 +88,6 @@ function Invoke-CheckACLs {
         $targetfolder,
         $recursive = $true
     )
-
     foreach ($folder in $targetfolder) {
 
         $FullPath = $folder.FullName
@@ -91,18 +98,29 @@ function Invoke-CheckACLs {
             continue;
         }
         $Access = $acl.Access
-        $Owner = $acl.Owner
+       # $Owner = $acl.Owner
+       # Write-Output "owner $Owner"
+       #Write-Output "path $Owner"
+        
 
         $check = $false
         foreach ($AccessObject in $Access) {
             $User = $AccessObject.IdentityReference.value
             $Rights = $AccessObject.FileSystemRights
             $Control = $AccessObject.AccessControlType
+
+            #Write-Output "User: $User"
+            #Write-Output "Username var: $global:username"
        
-            if ($Control -match "Allow") { 
-                if ($User -match $global:userShema -or $User -match $global:username -or $User -match $global:authShema -or $User -match $Owner) {
-                    if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify") {
+            if ($Control -eq "Allow") { 
+                if ($User -eq $global:userShema -or $User -eq $global:username -or $User -eq $global:authShema -or $User -eq $global:domainUserShema) {
+                    #Write-Output "YESSSS"
+                    #Write-Output "Rechte $Rights"
+
+                    if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify" -or $Rights -match "CreateFiles") {
                         
+                        #Write-Output "Rechte $Rights"
+                        #Write-Output "YESSSS 222222222222222222"
                         # Found access
                         if ($verboseLevel -gt 0) {
                             Write-Output "Path found: $FullPath"                            
@@ -145,19 +163,31 @@ function Invoke-CheckACLs {
                 }
             }         
         }
-        # no access, check subfolders
 
-        if ($verboseLevel -gt 1) {
-            Write-Output "no permissions in $folder"
-        }
-        if ($check -eq $false -AND $recursive -eq $true) {
+        if ($check -eq $false) {
             if ($verboseLevel -gt 1) {
-                Write-Output "recursive on, checking subfolder of $folder"
+                Write-Output "no permissions in $FullPath"
+            }
+             # no access, check subfolders
+            if ( $recursive -eq $true) {
+                
+                if ($verboseLevel -gt 1) {
+                    Write-Output "recursive on, checking subfolder of $FullPath"
+                }
+
+                # skipping some time consuming folders
+                if ($FullPath -ne "C:\Windows\servicing\LCU" -AND $FullPath -ne "C:\Windows\WinSxS") {
+
+                    $subfolders = Get-SubFolders -startfolder $FullPath
+                    Invoke-CheckACLs -targetfolder $subfolders
+
+                }
+    
+
             }
 
-            $subfolders = Get-SubFolders -startfolder $folder
-            Invoke-CheckACLs -targetfolder $subfolders
         }
+
     }  
 }
 
@@ -166,7 +196,7 @@ function Invoke-CheckACLs {
 if (!$inputCSV -eq "") {
    
     Write-Output "try to parse csv and remove duplicates...`n"
-    $csvFolders = Import-Csv $inputCSV | Sort-Object Path –Unique
+    $csvFolders = Import-Csv $inputCSV | Sort-Object Path -Unique
     
     if ($verboseLevel -gt 0) {
         Write-Output "finished, using the following list:"
@@ -215,7 +245,19 @@ else {
     
     Write-Output "starting search for write access in subfolders of $startfolder`n"
     $folders = Get-SubFolders -startfolder $startfolder
-    Invoke-CheckACLs -targetfolder $folders
+
+    if ($noRecurseOn) {
+        Invoke-CheckACLs -targetfolder $folders -recursive $false
+        if ($verboseLevel -gt 1) {
+            
+            Write-Output "recursive search is off"
+        }
+
+    } else {
+        Invoke-CheckACLs -targetfolder $folders
+    }
+
+    
 }
 
 
@@ -231,5 +273,8 @@ else {
     Write-Output "`nfound no folders with permissions :("
 }
 
+$stopwatch.Stop()
+[int]$elapsedSecods = $stopwatch.Elapsed.Seconds
 
+Write-Output "Search took $elapsedSecods seconds"
 

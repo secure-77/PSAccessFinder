@@ -33,3 +33,5 @@ C:\PS>.\findWriteAccess.ps1 -procInput .\Logfile.CSV -verbose 2
 ```
 
 
+# To Do
+fix owner
