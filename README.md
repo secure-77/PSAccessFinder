@@ -46,10 +46,10 @@ C:\PS>.\findWriteAccess.ps1 -procInput .\Logfile.CSV -verbose 2 -formatList
 
 # REMARKS
 ```
-To see the examples, type: "Get-Help Z:\OneDrive\Coding\powershell\PSAccessFinder\findWriteAccess.ps1 -Examples"
-For more information, type: "Get-Help Z:\OneDrive\Coding\powershell\PSAccessFinder\findWriteAccess.ps1 -Detailed"
-For technical information, type: "Get-Help Z:\OneDrive\Coding\powershell\PSAccessFinder\findWriteAccess.ps1 -Full"
-For online help, type: "Get-Help Z:\OneDrive\Coding\powershell\PSAccessFinder\findWriteAccess.ps1 -Online"
+To see the examples, type: "Get-Help findWriteAccess.ps1 -Examples"
+For more information, type: "Get-Help findWriteAccess.ps1 -Detailed"
+For technical information, type: "Get-Help findWriteAccess.ps1 -Full"
+For online help, type: "Get-Help findWriteAccess.ps1 -Online"
 ```
 
 # Preview
