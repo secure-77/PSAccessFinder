@@ -221,7 +221,7 @@ if (!$inputCSV -eq "" -or $services) {
         $csvFolders = Import-Csv $inputCSV | Sort-Object Path -Unique
     }
     
-    if ($verboseLevel -gt 0) {
+    if ($verboseLevel -gt 0 -and !$service) {
         Write-Output "finished, using the following list:"
         Write-Output $csvFolders | Select-Object "Process Name", "Path" | Format-Table -AutoSize
     }
