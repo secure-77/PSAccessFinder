@@ -9,12 +9,14 @@
     The path to the csv file, this file should contain a coloum with the header "Path" and "Process Name", like the procmon export produce it.
 .PARAMETER verbose
     0 = print a table of found pathes after finishing (default)
-    1 = print found folders at the moment of check + if inputCSV is set, the cleaned csv table
-    2 = print found folders and folders wihtout permissions at the moment of check
+    1 = print found folders, if inputCSV is set, the cleaned csv table, if service is set, the services
+    2 = print found folders and folders without permissions
 .PARAMETER formatList
     If set, the output will be printed as list instead of a table
 .PARAMETER noRecurse
     Only relevant for searches from current or start folder, if set, searching in subfolders will be skipped
+.PARAMETER services
+    check write access to service pathes
 .EXAMPLE
     C:\PS>.\findWriteAccess.ps1
     
@@ -41,11 +43,12 @@ param (
     [String]$startfolder = "",   
     [String]$inputCSV,
     [switch]$formatList,
-    [switch]$noRecurse
+    [switch]$noRecurse,
+    [switch]$services
 )
 
 
-if ($startfolder -eq "" -AND $inputCSV -eq "") {
+if ($startfolder -eq "" -AND $inputCSV -eq "" -AND !$services) {
     Write-Output "no start folder and no csv defined, using current folder`n"
     $startfolder = Get-Location
 }
@@ -182,11 +185,41 @@ function Invoke-CheckACLs {
 }
 
 
+if ($services) {
+    $Win32_Service = Get-CimInstance Win32_Service -Property Name, DisplayName, PathName, StartName | Select-Object Name, DisplayName, PathName, StartName
 
-if (!$inputCSV -eq "") {
-   
-    Write-Output "try to parse csv and remove duplicates...`n"
-    $csvFolders = Import-Csv $inputCSV | Sort-Object Path -Unique
+    $serviceList = New-Object System.Collections.ArrayList
+    foreach ($service in $Win32_Service) {
+        Try {
+            $cleanPath = $service.PathName -replace '"', ""
+            $cleanPath = $cleanPath -replace '.exe.*', ".exe"
+            if ($cleanPath -ne "") {
+                $Line = New-Object PSObject
+                $Line | Add-Member -membertype NoteProperty -name "Process Name" -Value $service.Name 
+                $Line | Add-Member -membertype NoteProperty -name "User" -Value $service.StartName
+                $Line | Add-Member -membertype NoteProperty -name "Path" -Value $cleanPath
+                $serviceList += $Line
+            }
+        }
+        catch {}
+    }
+    
+    if ($verbose -gt 0) {
+        Write-Output $serviceList   
+    }
+    #$serviceList | Export-Csv -Path .\Processes.csv -NoTypeInformation
+}
+
+
+if (!$inputCSV -eq "" -or $services) {
+    
+    if ($services) {
+        Write-Output "using service list...`n"
+        $csvFolders = $serviceList
+    } else {
+        Write-Output "try to parse csv and remove duplicates...`n"
+        $csvFolders = Import-Csv $inputCSV | Sort-Object Path -Unique
+    }
     
     if ($verboseLevel -gt 0) {
         Write-Output "finished, using the following list:"
@@ -250,7 +283,7 @@ else {
     }
 }
 
-
+# Output
 if ($Output.Count -gt 0) {
     Write-Output "`nfound some folders, happy hunting :)"
     if ($formatList) {

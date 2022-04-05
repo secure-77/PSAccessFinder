@@ -18,8 +18,7 @@ If it found a folder with permissions, it skipps the subfolders of them.
 
 # SYNTAX
 ```powershell
-C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-verbose] <Int32>] [[-startfolder] <String>] [[-inputCSV] <String>] [-formatList]     
-    [-noRecurse]
+C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-verbose] <Int32>] [[-startfolder] <String>] [[-inputCSV] <String>] [-formatList] [-noRecurse] [-services]
 ```
 
 
@@ -42,6 +41,14 @@ use a csv containing a coloumn "Path" and "Process Name" to check, usually you w
 
 ```powershell
 C:\PS>.\findWriteAccess.ps1 -procInput .\Logfile.CSV -verbose 2 -formatList
+```
+
+## Services
+
+retrieve all services with path to the executables and check access of these folders
+
+```powershell
+C:\PS>.\findWriteAccess.ps1 -services
 ```
 
 # REMARKS
