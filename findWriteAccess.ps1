@@ -9,14 +9,17 @@
     The path to the csv file, this file should contain a coloum with the header "Path" and "Process Name", like the procmon export produce it.
 .PARAMETER verbose
     0 = print a table of found pathes after finishing (default)
-    1 = print found folders, if inputCSV is set, the cleaned csv table, if service is set, the services
-    2 = print found folders and folders without permissions
+    1 = 0 + print instantly: found folders, if inputCSV is set, the cleaned csv table, if service is set, the services
+    2 = 0 + 1 + folders without permissions
 .PARAMETER formatList
     If set, the output will be printed as list instead of a table
 .PARAMETER noRecurse
     Only relevant for searches from current or start folder, if set, searching in subfolders will be skipped
 .PARAMETER services
-    check write access to service pathes
+    enumerate all services and check write access to the executable pathes
+.PARAMETER noSkip
+    Doesn´t skip time consuming folders (defined in $global:skippFolders) AND doesn´t break if permissions are found (it keeps searching in subfolders), use carefuly because this can take ages!
+    A good approach why you want to set this, is when you want to search for writeable subfolders of a specific application location, defined with -starfolder
 .EXAMPLE
     C:\PS>.\findWriteAccess.ps1
     
@@ -44,6 +47,7 @@ param (
     [String]$inputCSV,
     [switch]$formatList,
     [switch]$noRecurse,
+    [switch]$noSkip,
     [switch]$services
 )
 
@@ -118,7 +122,12 @@ function Invoke-CheckACLs {
                         if ($verboseLevel -gt 0) {
                             Write-Output "Path found: $FullPath"                            
                         }
-                        $check = $true
+
+                        # only skip subfolders if switch is true
+                        if (!$noSkip) {
+                            $check = $true
+                        }
+                        
                         $Line = New-Object PSObject
                         if (!$folder.ProcessName -eq "") {
                             $Line | Add-Member -membertype NoteProperty -name "Process" -Value $folder.ProcessName
@@ -160,7 +169,7 @@ function Invoke-CheckACLs {
             # no access, check subfolders
             if ( $recursive -eq $true) {
                        
-                if (!$global:skippFolders.contains($FullPath)) {
+                if (!$global:skippFolders.contains($FullPath) -OR $noSkip) {
 
                     if ($verboseLevel -gt 1) {
                         Write-Output "recursive on, checking subfolders"

@@ -16,14 +16,14 @@ If it found a folder with permissions, it skipps the subfolders of them.
 
 
 
-# SYNTAX
+# Syntax
 ```powershell
-C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-verbose] <Int32>] [[-startfolder] <String>] [[-inputCSV] <String>] [-formatList] [-noRecurse] [-services]
+C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-verbose] <Int32>] [[-startfolder] <String>] [[-inputCSV] <String>] [-formatList] [-noRecurse] [-services] [-noSkip]
 ```
 
 
 
-# EXAMPLES
+# Examples
 
 ## Recursive Check of Subolders
 check permissions in sub directories, starting at the current directory
@@ -51,7 +51,7 @@ retrieve all services with path to the executables and check access of these fol
 C:\PS>.\findWriteAccess.ps1 -services
 ```
 
-# REMARKS
+# Remarks
 ```
 To see the examples, type: "Get-Help findWriteAccess.ps1 -Examples"
 For more information, type: "Get-Help findWriteAccess.ps1 -Detailed"
