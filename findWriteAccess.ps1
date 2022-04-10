@@ -7,19 +7,23 @@
     The path to the start the permission check
 .PARAMETER inputCSV
     The path to the csv file, this file should contain a coloum with the header "Path" and "Process Name", like the procmon export produce it.
+.PARAMETER services
+    enumerate all services and check write access to the executable pathes
+.PARAMETER serviceFilter
+    0 = no services are filtered (default)
+    1 = windows services get filterd
+    2 = 1 + quoted pathes in servics get filterd
+.PARAMETER noRecurse
+    Only relevant for searches from current or start folder, if set, searching in subfolders will be skipped
+.PARAMETER noSkip
+    Doesn´t skip time consuming folders (defined in $global:skippFolders) AND doesn´t break if permissions are found (it keeps searching in subfolders), use carefuly because this can take ages!
+    A good approach why you want to set this, is when you want to search for writeable subfolders of a specific application location, defined with -starfolder
 .PARAMETER verbose
     0 = print a table of found pathes after finishing (default)
     1 = 0 + print instantly: found folders, if inputCSV is set, the cleaned csv table, if service is set, the services
     2 = 0 + 1 + folders without permissions
 .PARAMETER formatList
     If set, the output will be printed as list instead of a table
-.PARAMETER noRecurse
-    Only relevant for searches from current or start folder, if set, searching in subfolders will be skipped
-.PARAMETER services
-    enumerate all services and check write access to the executable pathes
-.PARAMETER noSkip
-    Doesn´t skip time consuming folders (defined in $global:skippFolders) AND doesn´t break if permissions are found (it keeps searching in subfolders), use carefuly because this can take ages!
-    A good approach why you want to set this, is when you want to search for writeable subfolders of a specific application location, defined with -starfolder
 .EXAMPLE
     C:\PS>.\findWriteAccess.ps1
     
@@ -35,6 +39,10 @@
 
     use a csv containing a coloumn "Path" and "Process Name" to check, usually you will take a export from procmon.exe
     verbose 2 will instantly print matching and also folders with no permissions
+.EXAMPLE
+    C:\PS>.\findWriteAccess.ps1 -services -serviceFilter 2 -verbose 1 -checkParents
+
+    show all unqoted non windows services and check permissons also of the parent folders
 .LINK
     https://github.com/secure-77/PSAccessFinder
 #>
@@ -42,13 +50,15 @@
 
 # inputs
 param (
-    [int]$verbose = 0,
     [String]$startfolder = "",   
     [String]$inputCSV,
-    [switch]$formatList,
+    [switch]$services,
+    [int]$serviceFilter = 0,
     [switch]$noRecurse,
     [switch]$noSkip,
-    [switch]$services
+    [switch]$checkParents,
+    [int]$verbose = 0,
+    [switch]$formatList
 )
 
 
@@ -65,7 +75,15 @@ $global:userShema = "BUILTIN\Users"
 $global:domainUserShema = $env:USERDomain + "\Domain Users"
 $global:authShema = "NT AUTHORITY\authenticated users"
 $global:verboseLevel = $verbose
-$global:noRecurseOn = $noRecurse
+
+# always disalbe recurse if parents check is one
+if ($checkParents) {
+    $global:noRecurseOn = $true
+}
+else {
+    $global:noRecurseOn = $noRecurse
+}
+
 $folders = @()
 $global:Output = @() 
 
@@ -79,7 +97,6 @@ if ($language -match "de-DE") {
 }
 
 
-
 # Get subfolders of directory
 function Get-SubFolders {
     param (
@@ -88,6 +105,14 @@ function Get-SubFolders {
     Write-Output "check folder: $startfolder"
     Return Get-ChildItem $startfolder -ErrorAction SilentlyContinue | where-object { $_.PSIsContainer -eq "TRUE" } 
 }
+
+function Get-Folder {
+    param (
+        $startfolder
+    )
+    Return Get-Item $startfolder -ErrorAction SilentlyContinue | where-object { $_.PSIsContainer -eq "TRUE" } 
+}
+
 
 
 # Check the ACLs for all subfolders
@@ -166,9 +191,11 @@ function Invoke-CheckACLs {
             if ($verboseLevel -gt 1) {
                 Write-Output "no permissions in $FullPath"
             }
+                      
             # no access, check subfolders
             if ( $recursive -eq $true) {
                        
+                # only process non time consuming folders
                 if (!$global:skippFolders.contains($FullPath) -OR $noSkip) {
 
                     if ($verboseLevel -gt 1) {
@@ -178,45 +205,78 @@ function Invoke-CheckACLs {
                     $subfolders = Get-SubFolders -startfolder $FullPath
                     Invoke-CheckACLs -targetfolder $subfolders
 
-                    # skipping some time consuming folders
                 }
+                # skip these and print info
                 else {
                     if ($verboseLevel -gt 0) {
                         Write-Output "skipping subfolders check for $FullPath"
                     }
                 }
-    
             }
-
+            # check parent folders
+            elseif ($checkParents) {
+        
+                $parent = Split-Path $FullPath -Parent  
+                
+                if ($parent) {
+                    $parentFolder = Get-Folder($parent)
+                
+                    if ($verboseLevel -gt 1) {
+                        Write-Output "check parent $parentFolder"
+                    }
+                    Invoke-CheckACLs -targetfolder $parentFolder -recursive $false            
+                }              
+            }
         }
-
     }  
 }
 
 
-if ($services) {
+if ($services -or $showNonWServices) {
     $Win32_Service = Get-CimInstance Win32_Service -Property Name, DisplayName, PathName, StartName | Select-Object Name, DisplayName, PathName, StartName
 
     $serviceList = New-Object System.Collections.ArrayList
     foreach ($service in $Win32_Service) {
         Try {
+
+            # filter windows services
+            if ($serviceFilter -gt 0) {
+                $path = $service.Pathname.tostring().replace('"','')
+                $cri = ([System.Diagnostics.FileVersionInfo]::GetVersionInfo($path)).legalcopyright
+                if ($cri -like "*Microsoft*") {
+                continue
+                }
+            }
+            # filter quoted pathes
+            if ($serviceFilter -gt 1) {
+                if ($service.PathName -like '"*') {
+                continue
+                }
+            }
+
             $cleanPath = $service.PathName -replace '"', ""
             $cleanPath = $cleanPath -replace '.exe.*', ".exe"
+
             if ($cleanPath -ne "") {
                 $Line = New-Object PSObject
                 $Line | Add-Member -membertype NoteProperty -name "Process Name" -Value $service.Name 
                 $Line | Add-Member -membertype NoteProperty -name "User" -Value $service.StartName
+                $Line | Add-Member -membertype NoteProperty -name "Orig Path" -Value $service.PathName
                 $Line | Add-Member -membertype NoteProperty -name "Path" -Value $cleanPath
                 $serviceList += $Line
-            }
+            }          
         }
         catch {}
     }
     
     if ($verbose -gt 0) {
-        Write-Output $serviceList   
+        if ($formatList) {
+            Write-Output $serviceList | Format-List
+        } else {
+            Write-Output $serviceList 
+        }
+        
     }
-    #$serviceList | Export-Csv -Path .\Processes.csv -NoTypeInformation
 }
 
 
@@ -225,7 +285,8 @@ if (!$inputCSV -eq "" -or $services) {
     if ($services) {
         Write-Output "using service list...`n"
         $csvFolders = $serviceList
-    } else {
+    }
+    else {
         Write-Output "try to parse csv and remove duplicates...`n"
         $csvFolders = Import-Csv $inputCSV | Sort-Object Path -Unique
     }
@@ -275,16 +336,18 @@ if (!$inputCSV -eq "" -or $services) {
 }
 else {
     
-    Write-Output "starting search for write access in subfolders of $startfolder`n"
+    Write-Output "starting search for write access in $startfolder`n"
     $folders = Get-SubFolders -startfolder $startfolder
 
     if ($noRecurseOn) {
         
-        if ($verboseLevel -gt 0) {
-            
-            Write-Output "recursive search is off`n"
+        if ($verboseLevel -gt 0) {        
+            Write-Output "recursive search is off"
         }
-
+        if ($checkParents) {
+            Write-Output "parents search is on`n"
+            $folders = Get-Folder($startfolder)
+        }        
         Invoke-CheckACLs -targetfolder $folders -recursive $false
     }
     else {

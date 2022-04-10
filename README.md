@@ -18,7 +18,8 @@ If it found a folder with permissions, it skipps the subfolders of them.
 
 # Syntax
 ```powershell
-C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-verbose] <Int32>] [[-startfolder] <String>] [[-inputCSV] <String>] [-formatList] [-noRecurse] [-services] [-noSkip]
+C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-startfolder] <String>] [[-inputCSV] <String>] [-services] [[-serviceFilter] <Int32>] [-noRecurse]     
+    [-noSkip] [-checkParents] [[-verbose] <Int32>] [-formatList]
 ```
 
 
@@ -50,6 +51,13 @@ retrieve all services with path to the executables and check access of these fol
 ```powershell
 C:\PS>.\findWriteAccess.ps1 -services
 ```
+
+show all unqoted non windows services and check permissons also of the parent folders
+
+```powershell
+C:\PS>.\findWriteAccess.ps1 -services -serviceFilter 2 -verbose 1 -checkParents
+```
+
 
 # Remarks
 ```
