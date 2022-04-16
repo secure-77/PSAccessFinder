@@ -13,6 +13,8 @@ If it found a folder with permissions, it skipps the subfolders of them.
     - Domain Users
     - Authenticated Users
 - when reading from csv input: stepping upwards until a folder exist and checks again the permissions
+- check services and parent folders permissions
+- service filter: all, non windows, unquoted
 
 
 
@@ -21,7 +23,6 @@ If it found a folder with permissions, it skipps the subfolders of them.
 C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-startfolder] <String>] [[-inputCSV] <String>] [-services] [[-serviceFilter] <Int32>] [-noRecurse]     
     [-noSkip] [-checkParents] [[-verbose] <Int32>] [-formatList]
 ```
-
 
 
 # Examples
@@ -52,7 +53,7 @@ retrieve all services with path to the executables and check access of these fol
 C:\PS>.\findWriteAccess.ps1 -services
 ```
 
-show all unqoted non windows services and check permissons also of the parent folders
+show all unquoted non windows services and check permissons also of the parent folders
 
 ```powershell
 C:\PS>.\findWriteAccess.ps1 -services -serviceFilter 2 -verbose 1 -checkParents
