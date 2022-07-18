@@ -1,6 +1,6 @@
 # PSAccessFinder
  
-This Powershell script searches recursive for folders where the current user has Write, Modify or FullControl permissions. Its meant to find insufficient permissions that can be used for DLL Hijacking or to bypass AppLocker. 
+This Powershell script search recursive for folders where the current user has Write, Modify or FullControl permissions. Its meant to find insufficient permissions that can be used for DLL Hijacking or to bypass AppLocker. 
 
 If it found a folder with permissions, it skipps the subfolders of them.
 
@@ -13,7 +13,7 @@ If it found a folder with permissions, it skipps the subfolders of them.
     - Domain Users
     - Authenticated Users
 - when reading from csv input: stepping upwards until a folder exist and checks again the permissions
-- check services and parent folders permissions
+- check services and parent folder permissions
 - service filter: all, non windows, unquoted
 
 
