@@ -75,6 +75,9 @@ $global:userShema = "BUILTIN\Users"
 $global:domainUserShema = $env:USERDomain + "\Domain Users"
 $global:authShema = "NT AUTHORITY\authenticated users"
 $global:verboseLevel = $verbose
+$global:everyone = "everyone"
+
+# need to implement: [System.Security.Principal.WindowsIdentity]::GetCurrent().Groups
 
 # always disalbe recurse if parents check is one
 if ($checkParents) {
@@ -94,6 +97,7 @@ if ($language -match "de-DE") {
     $global:userShema = "VORDEFINIERT\Benutzer"
     $global:authShema = "NT-AUTORITÄT\Authentifizierte Benutzer"
     $global:domainUserShema = $env:USERDomain + "\Domänen-Benutzer"
+    $global:everyone = "Jeder"
 }
 
 
@@ -139,7 +143,8 @@ function Invoke-CheckACLs {
             $Control = $AccessObject.AccessControlType
      
             if ($Control -eq "Allow") { 
-                if ($User -eq $global:userShema -or $User -eq $global:username -or $User -eq $global:authShema -or $User -eq $global:domainUserShema) {
+               
+                if ($User -eq $global:userShema -or $User -eq $global:username -or $User -eq $global:authShema -or $User -eq $global:domainUserShema -or $User -eq $global:everyone ) {
 
                     if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify" -or $Rights -match "CreateFiles") {                    
 
