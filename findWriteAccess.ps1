@@ -8,6 +8,8 @@
 .PARAMETER inputCSV
     The path to the csv file, this file should contain a coloum with the header "Path" and "Process Name", like the procmon export produce it.
 .PARAMETER services
+    enumerate all machine environment variables and check write access to the executable pathes
+.PARAMETER services
     enumerate all services and check write access to the executable pathes
 .PARAMETER serviceFilter
     0 = no services are filtered (default)
@@ -53,6 +55,7 @@ param (
     [String]$startfolder = "",   
     [String]$inputCSV,
     [switch]$services,
+    [switch]$envCheck,
     [int]$serviceFilter = 0,
     [switch]$noRecurse,
     [switch]$noSkip,
@@ -62,7 +65,7 @@ param (
 )
 
 
-if ($startfolder -eq "" -AND $inputCSV -eq "" -AND !$services) {
+if ($startfolder -eq "" -AND $inputCSV -eq "" -AND !$services -AND !$envCheck) {
     Write-Output "no start folder and no csv defined, using current folder`n"
     $startfolder = Get-Location
 }
@@ -237,6 +240,7 @@ function Invoke-CheckACLs {
 }
 
 
+# Entry Point after start (check for service)
 if ($services -or $showNonWServices) {
     $Win32_Service = Get-CimInstance Win32_Service -Property Name, DisplayName, PathName, StartName | Select-Object Name, DisplayName, PathName, StartName
 
@@ -284,7 +288,7 @@ if ($services -or $showNonWServices) {
     }
 }
 
-
+# Followup Point after start (check for service or csv)
 if (!$inputCSV -eq "" -or $services) {
     
     if ($services) {
@@ -303,7 +307,7 @@ if (!$inputCSV -eq "" -or $services) {
 
     $folderCount = $csvFolders.Count
 
-    Write-Output "starting search for write access in $folderCount locations... `n"
+    Write-Output "`nstarting search for write access in $folderCount locations... `n"
 
     foreach ($dll in $csvFolders) {
         #extract path of file and add FullName Member
@@ -339,9 +343,36 @@ if (!$inputCSV -eq "" -or $services) {
     }
 
 }
+
+# Entry Point after start (check for system env pathes)
+elseif($envCheck) {
+
+$pathCollection = [Environment]::GetEnvironmentVariables("Machine").Path.Split(';')
+
+Write-Output "`nstarting search for write access in:`n $pathCollection`n"
+
+foreach ($folder in $pathCollection) {
+
+    $folders = Get-SubFolders -startfolder $folder
+
+    if ($checkParents) {
+        Write-Output "parents search is on`n"
+        $folders = Get-Folder($startfolder)
+    }
+    
+    if ($verboseLevel -gt 0) {        
+        Write-Output "recursive search is off"
+    }
+
+    Invoke-CheckACLs -targetfolder $folders -recursive $false
+
+}
+
+}
+# Entry Point after start (check startfolder)
 else {
     
-    Write-Output "starting search for write access in $startfolder`n"
+    Write-Output "`nstarting search for write access in $startfolder`n"
     $folders = Get-SubFolders -startfolder $startfolder
 
     if ($noRecurseOn) {
