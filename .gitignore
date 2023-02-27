@@ -1,3 +1,4 @@
 ﻿*.csv
 exportServices.ps1
 *.db
+.vscode

@@ -14,6 +14,7 @@ If it found a folder with permissions, it skipps the subfolders of them.
     - Authenticated Users
 - when reading from csv input: stepping upwards until a folder exist and checks again the permissions
 - check services and parent folder permissions
+- check system environment variable pathes
 - service filter: all, non windows, unquoted
 
 
@@ -45,6 +46,14 @@ use a csv containing a coloumn "Path" and "Process Name" to check, usually you w
 C:\PS>.\findWriteAccess.ps1 -procInput .\Logfile.CSV -verbose 2 -formatList
 ```
 
+## System Environment Variables
+
+Check for write access in system environment variable pathes
+
+```powershell
+C:\PS>.\findWriteAccess.ps1 -envCheck
+```
+
 ## Services
 
 retrieve all services with path to the executables and check access of these folders
@@ -58,6 +67,19 @@ show all unquoted non windows services and check permissons also of the parent f
 ```powershell
 C:\PS>.\findWriteAccess.ps1 -services -serviceFilter 2 -verbose 1 -checkParents
 ```
+
+# Error Handling
+
+if you get errors like this after copy pasting the script:
+
+```powershell
+.....char:38
+    $global.authSchema = "NT-AUTORIT.."
+unexpected token 'T\Authentifizerte`' in expression or statement.
+```
+
+you need to save the script with UTF-8-BOM encoding.
+
 
 
 # Remarks
