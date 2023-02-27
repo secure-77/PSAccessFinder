@@ -21,7 +21,7 @@ If it found a folder with permissions, it skipps the subfolders of them.
 
 # Syntax
 ```powershell
-C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-startfolder] <String>] [[-inputCSV] <String>] [-services] [[-serviceFilter] <Int32>] [-noRecurse]     
+C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-startfolder] <String>] [[-inputCSV] <String>] [-envCheck] [-services] [[-serviceFilter] <Int32>] [-noRecurse]     
     [-noSkip] [-checkParents] [[-verbose] <Int32>] [-formatList]
 ```
 

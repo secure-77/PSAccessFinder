@@ -7,7 +7,7 @@
     The path to the start the permission check
 .PARAMETER inputCSV
     The path to the csv file, this file should contain a coloum with the header "Path" and "Process Name", like the procmon export produce it.
-.PARAMETER services
+.PARAMETER envCheck
     enumerate all machine environment variables and check write access to the executable pathes
 .PARAMETER services
     enumerate all services and check write access to the executable pathes
