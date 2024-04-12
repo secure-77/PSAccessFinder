@@ -20,6 +20,8 @@
 .PARAMETER noSkip
     Doesn´t skip time consuming folders (defined in $global:skippFolders) AND doesn´t break if permissions are found (it keeps searching in subfolders), use carefuly because this can take ages!
     A good approach why you want to set this, is when you want to search for writeable subfolders of a specific application location, defined with -starfolder
+.PARAMETER checkParents
+    Check also the parents folders, make sense when a startfolder which is not on root level is defined or in combination with the service parameter
 .PARAMETER verbose
     0 = print a table of found pathes after finishing (default)
     1 = 0 + print instantly: found folders, if inputCSV is set, the cleaned csv table, if service is set, the services

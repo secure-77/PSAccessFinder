@@ -21,8 +21,47 @@ If it found a folder with permissions, it skipps the subfolders of them.
 
 # Syntax
 ```powershell
-C:\PS\PSAccessFinder>.\findWriteAccess.ps1 [[-startfolder] <String>] [[-inputCSV] <String>] [-envCheck] [-services] [[-serviceFilter] <Int32>] [-noRecurse]     
-    [-noSkip] [-checkParents] [[-verbose] <Int32>] [-formatList]
+
+SYNTAX
+    findWriteAccess.ps1 [[-startfolder] <String>] [[-inputCSV] <String>] [-services] [-envCheck] [[-serviceFilter] <Int32>] [-noRecurse] [-noSkip] [-checkParents] [[-verbose]        
+    <Int32>] [-formatList] [<CommonParameters>]
+
+
+PARAMETER
+    -startfolder <String>
+        The path to the start the permission check
+
+    -inputCSV <String>
+        The path to the csv file, this file should contain a coloum with the header "Path" and "Process Name", like the procmon export produce it.
+
+    -services [<SwitchParameter>]
+        enumerate all services and check write access to the executable pathes
+
+    -envCheck [<SwitchParameter>]
+        enumerate all machine environment variables and check write access to the executable pathes
+
+    -serviceFilter <Int32>
+        0 = no services are filtered (default)
+        1 = windows services get filterd
+        2 = 1 + quoted pathes in servics get filterd
+
+    -noRecurse [<SwitchParameter>]
+        Only relevant for searches from current or start folder, if set, searching in subfolders will be skipped
+
+    -noSkip [<SwitchParameter>]
+        Doesn´t skip time consuming folders (defined in $global:skippFolders) AND doesn´t break if permissions are found (it keeps searching in subfolders), use carefuly because this can take ages!
+        A good approach why you want to set this, is when you want to search for writeable subfolders of a specific application location, defined with -starfolder
+
+    -checkParents [<SwitchParameter>]
+        Check also the parents folders, make sense when a startfolder which is not on root level is defined or in combination with the service parameter
+
+    -verbose <Int32>
+        0 = print a table of found pathes after finishing (default)
+        1 = 0 + print instantly: found folders, if inputCSV is set, the cleaned csv table, if service is set, the services
+        2 = 0 + 1 + folders without permissions
+
+    -formatList [<SwitchParameter>]
+        If set, the output will be printed as list instead of a table
 ```
 
 
@@ -84,10 +123,10 @@ you need to save the script with UTF-8-BOM encoding.
 
 # Remarks
 ```
-To see the examples, type: "Get-Help findWriteAccess.ps1 -Examples"
-For more information, type: "Get-Help findWriteAccess.ps1 -Detailed"
-For technical information, type: "Get-Help findWriteAccess.ps1 -Full"
-For online help, type: "Get-Help findWriteAccess.ps1 -Online"
+To see the examples, type: "Get-Help .\findWriteAccess.ps1 -Examples"
+For more information, type: "Get-Help .\findWriteAccess.ps1 -Detailed"
+For technical information, type: "Get-Help .\findWriteAccess.ps1 -Full"
+For online help, type: "Get-Help .\findWriteAccess.ps1 -Online"
 ```
 
 # Preview
