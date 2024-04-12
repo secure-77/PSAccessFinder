@@ -77,10 +77,11 @@ $global:username = [System.Security.Principal.WindowsIdentity]::GetCurrent().Nam
 $global:userShema = "BUILTIN\Users"
 $global:domainUserShema = $env:USERDomain + "\Domain Users"
 $global:authShema = "NT AUTHORITY\authenticated users"
-$global:verboseLevel = $verbose
 $global:everyone = "everyone"
 
-# need to implement: [System.Security.Principal.WindowsIdentity]::GetCurrent().Groups
+$global:verboseLevel = $verbose
+
+
 
 # always disalbe recurse if parents check is one
 if ($checkParents) {
@@ -102,6 +103,28 @@ if ($language -match "de-DE") {
     $global:domainUserShema = $env:USERDomain + "\Domänen-Benutzer"
     $global:everyone = "Jeder"
 }
+
+# (New-Object System.DirectoryServices.DirectorySearcher("(&(objectCategory=User)(samAccountName=$($env:username)))")).FindOne().GetDirectoryEntry().memberOf
+
+## add local groups of current user
+$global:checkGroups = @()
+$global:allGroups = @(Get-LocalGroup).SID
+
+foreach ( $groupSID in $allGroups )
+{
+    $isMember = Get-LocalGroupMember -SID $groupSID  | Where-Object { $_.Name -eq $global:username }
+
+    if ($isMember) {
+        $groupName = $groupSID.Translate([System.Security.Principal.NTAccount]).Value
+        $global:checkGroups += @($groupName)
+    }
+ }
+
+
+$global:checkGroups += @($global:everyone,$global:authShema,$global:domainUserShema,$global:userShema,$global:username)
+$global:checkGroups += @([Security.Principal.WindowsIdentity]::GetCurrent().Groups | foreach-object {$_.Translate([Security.Principal.NTAccount]).value})
+$global:checkGroups = $global:checkGroups | Sort-Object -Unique
+
 
 
 # Get subfolders of directory
@@ -146,8 +169,11 @@ function Invoke-CheckACLs {
             $Control = $AccessObject.AccessControlType
      
             if ($Control -eq "Allow") { 
-               
-                if ($User -eq $global:userShema -or $User -eq $global:username -or $User -eq $global:authShema -or $User -eq $global:domainUserShema -or $User -eq $global:everyone ) {
+
+
+        foreach ( $group in $global:checkGroups )
+        {               
+                if ($User -eq  $group ) {
 
                     if ($Rights -match "FullControl" -or $Rights -match "Write" -or $Rights -match "Modify" -or $Rights -match "CreateFiles") {                    
 
@@ -192,6 +218,7 @@ function Invoke-CheckACLs {
                         $global:Output += $Line
                     }
                 }
+            }
             }         
         }
 
