@@ -6,7 +6,7 @@
 .PARAMETER startfolder
     The path to the start the permission check
 .PARAMETER inputCSV
-    The path to the csv file, this file should contain a coloum with the header "Path" and "Process Name", like the procmon export produce it.
+    The path to the csv file, this file should contain a column with the header "Path" and "Process Name", like the procmon export produce it.
 .PARAMETER envCheck
     enumerate all machine environment variables and check write access to the executable pathes
 .PARAMETER services
@@ -126,6 +126,13 @@ foreach ( $groupSID in $allGroups )
 $global:checkGroups += @($global:everyone,$global:authShema,$global:domainUserShema,$global:userShema,$global:username)
 $global:checkGroups += @([Security.Principal.WindowsIdentity]::GetCurrent().Groups | foreach-object {$_.Translate([Security.Principal.NTAccount]).value})
 $global:checkGroups = $global:checkGroups | Sort-Object -Unique
+
+if ($verboseLevel -gt 0) {
+    Write-Output "Checking the following Security Profiles `n"                            
+    $global:checkGroups
+}
+
+
 
 
 
@@ -273,6 +280,9 @@ function Invoke-CheckACLs {
 if ($services -or $showNonWServices) {
     $Win32_Service = Get-CimInstance Win32_Service -Property Name, DisplayName, PathName, StartName | Select-Object Name, DisplayName, PathName, StartName
 
+    if (!$Win32_Service) {
+        "No CIM Access to Services, check manuel via registry!"
+    }
     $serviceList = New-Object System.Collections.ArrayList
     foreach ($service in $Win32_Service) {
         Try {
